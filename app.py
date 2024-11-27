@@ -3,7 +3,10 @@ import pandas as pd
 from datetime import datetime
 import os
 from docx import Document
-import requests
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.application import MIMEApplication
 
 # Page configuration
 st.set_page_config(page_title="Job Vacancy Requirements Form", layout="wide")
@@ -30,31 +33,42 @@ def create_word_document(data):
     doc.save(filename)
     return filename
 
-# Helper function: Upload file to SharePoint
-def upload_to_sharepoint(file_path, file_name):
-    sharepoint_site = "https://davidsongray.sharepoint.com"
-    site_relative_url = "/sites/StirlingQR"
-    folder_relative_url = "/sites/StirlingQR/Shared Documents/General"
+# Helper function: Send email via Outlook SMTP
+def send_email_via_outlook(filename, data):
+    sender_email = "chris@stirlingqr.com"  # Your Outlook email address
+    sender_password = "Measure897!"  # Your Outlook password (ensure this is secure!)
+    receiver_email = "chris@stirlingqr.com"  # Email where you want to receive the submission
 
-    # SharePoint credentials (use environment variables for security)
-    username = "your-sharepoint-chris@stirlingqr.com"  # Replace with your SharePoint email
-    password = "your-sharepoint-Measure897!"          # Replace with your SharePoint password
+    # Create the email message
+    msg = MIMEMultipart()
+    msg['From'] = sender_email
+    msg['To'] = receiver_email
+    msg['Subject'] = f"New Job Vacancy Submission: {data['Job Title']}"
 
-    # Authenticate using requests library
-    auth_url = f"{sharepoint_site}/_forms/default.aspx?wa=wsignin1.0"
-    session = requests.Session()
-    session.auth = (username, password)
+    # Email body content
+    body = "A new job vacancy has been submitted with the following details:\n\n"
+    for key, value in data.items():
+        body += f"{key}: {value}\n"
+    msg.attach(MIMEText(body, 'plain'))
 
-    # Upload file to SharePoint
-    with open(file_path, "rb") as file_content:
-        upload_url = f"{sharepoint_site}/_api/web/getfolderbyserverrelativeurl('{folder_relative_url}')/files/add(overwrite=true, url='{file_name}')"
-        headers = {"Accept": "application/json;odata=verbose"}
-        response = session.post(upload_url, headers=headers, data=file_content)
+    # Attach the Word document
+    with open(filename, 'rb') as f:
+        attachment = MIMEApplication(f.read(), _subtype='docx')
+        attachment.add_header('Content-Disposition', 'attachment', filename=filename)
+        msg.attach(attachment)
 
-        if response.status_code == 200:
-            return f"{sharepoint_site}{folder_relative_url}/{file_name}"  # Return the URL of the uploaded file
-        else:
-            raise Exception(f"Failed to upload file: {response.text}")
+    # Send the email using Outlook's SMTP server
+    try:
+        server = smtplib.SMTP('smtp.office365.com', 587)  # Outlook SMTP server and port
+        server.starttls()  # Start TLS encryption
+        server.login(sender_email, sender_password)  # Log in to your account
+        server.send_message(msg)  # Send the email
+        server.quit()  # Close the connection
+        return True  # Return success status if no errors occur
+
+    except Exception as e:
+        st.error(f"Failed to send email: {str(e)}")
+        return False
 
 # Form creation and submission handling
 with st.form("job_vacancy_form"):
@@ -63,19 +77,51 @@ with st.form("job_vacancy_form"):
     company_name = st.text_input("Company Name*")
     job_title = st.text_input("Job Title*")
     
-    # Additional fields (truncated for brevity)
+    # Basic Job Information
+    st.subheader("Basic Job Information")
+    department = st.text_input("Department")
     location = st.text_input("Location*")
-    required_skills = st.text_area("Required Skills*")
+
+    # Working Arrangements
+    st.subheader("Working Arrangements")
+    work_model = st.selectbox(
+        "Working Model*", ["Office-based", "Hybrid", "Remote", "Flexible"]
+    )
+    
+    if work_model == "Hybrid":
+        office_days = st.number_input("Required Office Days per Week", min_value=1, max_value=5)
+
+    # Compensation Package
+    st.subheader("Compensation Package")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        salary_min = st.number_input("Minimum Salary (£)*", min_value=0)
+    
+    with col2:
+        salary_max = st.number_input("Maximum Salary (£)*", min_value=0)
+    
+    benefits = st.multiselect(
+        "Benefits Package",
+        ["Health Insurance", "Dental Insurance", "Life Insurance", "Pension",
+         "Annual Bonus", "Share Options", "Professional Development Budget",
+         "Gym Membership", "Private Healthcare", "Mental Health Support"]
+    )
+    
+    bonus_scheme = st.text_area("Bonus Structure Details (if applicable)")
+
+    # Qualifications and Requirements Section (truncated for brevity)
 
     # Submit button
     submitted = st.form_submit_button("Submit Job Vacancy")
 
 if submitted:
+    
     required_fields = [
         (company_name, "Company Name"),
         (job_title, "Job Title"),
         (location, "Location"),
-        (required_skills, "Required Skills"),
      ]
     
     missing_fields = [field[1] for field in required_fields if not field[0]]
@@ -89,22 +135,20 @@ if submitted:
             "Submission Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "Company Name": company_name,
             "Job Title": job_title,
+            "Department": department,
             "Location": location,
-            "Required Skills": required_skills,
+            # Additional fields truncated for brevity...
         }
 
         # Create Word document locally
         doc_filename = create_word_document(form_data)
 
         try:
-            # Upload document to SharePoint
-            uploaded_file_url = upload_to_sharepoint(doc_filename, os.path.basename(doc_filename))
-            st.success(f"File uploaded successfully to SharePoint: {uploaded_file_url}")
+            # Send email via Outlook SMTP with the Word document attached
+            if send_email_via_outlook(doc_filename, form_data):
+                st.success(f"Form submitted successfully! An email has been sent to {receiver_email}")
 
-            # Notify admin about the new upload (optional)
-            st.info(f"A new job vacancy has been submitted: {uploaded_file_url}")
-
-            # Clean up local file after upload (optional)
+            # Clean up local file after sending (optional)
             os.remove(doc_filename)
 
         except Exception as e:
