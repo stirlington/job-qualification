@@ -4,6 +4,7 @@ from datetime import datetime
 import os
 import re
 from docx import Document
+import requests
 
 # Page configuration
 st.set_page_config(page_title="Job Vacancy Requirements Form", layout="wide")
@@ -60,6 +61,12 @@ def save_submission(data, filename):
         updated_df.to_csv(csv_file, index=False)
     else:
         df.to_csv(csv_file, index=False)
+
+# Helper function: Send form data to Formspree
+def send_to_formspree(data):
+    formspree_url = "https://formspree.io/f/xbljzalo"  # Replace with your Formspree URL
+    response = requests.post(formspree_url, json=data)
+    return response.status_code, response.text
 
 # Form creation and submission handling
 with st.form("job_vacancy_form"):
@@ -195,14 +202,20 @@ if submitted:
             doc_filename = create_word_document(form_data)
             save_submission(form_data, doc_filename)
 
-            with open(os.path.join("submissions", doc_filename), 'rb') as file:
-                st.download_button(
-                    label="Download Job Vacancy Details",
-                    data=file,
-                    file_name=doc_filename,
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                )
-            st.success(f"Form submitted successfully! Your document has been saved.")
+            # Send data to Formspree
+            status_code, response_text = send_to_formspree(form_data)
+
+            if status_code == 200:
+                with open(os.path.join("submissions", doc_filename), 'rb') as file:
+                    st.download_button(
+                        label="Download Job Vacancy Details",
+                        data=file,
+                        file_name=doc_filename,
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    )
+                st.success(f"Form submitted successfully! A copy has been emailed to you.")
+            else:
+                st.error(f"Failed to send email. Error: {response_text}")
         
         except Exception as e:
             st.error(f"An error occurred: {str(e)}")
