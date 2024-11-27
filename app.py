@@ -164,25 +164,4 @@ with st.form("job_vacancy_form"):
          "Presentation", "Assessment Center"]
     )
     
-    interview_details = st.text_area("Additional Interview Process Details")
-
-    # Key Success Factors
-    st.subheader("Top 3 Most Important Factors")
-    
-    success_factor_1 = st.text_input("1st Most Important Factor*")
-    
-    success_factor_2 = st.text_input("2nd Most Important Factor*")
-    
-    success_factor_3 = st.text_input("3rd Most Important Factor*")
-
-    # Additional Information
-    st.subheader("Additional Information")
-    
-    start_date = st.date_input("Expected Start Date")
-    
-    urgent = st.checkbox("This is an urgent requirement")
-    
-    additional_notes = st.text_area("Any Additional Information or Special Requirements")
-
-     # Submit button 
-submitted!
+   interview_details...
