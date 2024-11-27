@@ -3,10 +3,6 @@ import pandas as pd
 from datetime import datetime
 import os
 from docx import Document
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from email.mime.application import MIMEApplication
 import re
 
 # Page configuration
@@ -23,65 +19,45 @@ except Exception as e:
 st.title("Job Vacancy Requirements Form")
 st.markdown("Please fill out the details for your job vacancy below.")
 
-def is_valid_email(email):
-    """Check if email address is valid"""
-    pattern = r'^[\w\.-]+@[\w\.-]+\.\w+$'
-    return re.match(pattern, email) is not None
-
 def create_word_document(data):
     """Generate a Word document with job vacancy details."""
     doc = Document()
     doc.add_heading('Job Vacancy Details', level=0)
     for key, value in data.items():
-        if key not in ["Submission Date", "Sender Email"]:
-            p = doc.add_paragraph()
-            p.add_run(f"{key}: ").bold = True
-            p.add_run(str(value))
+        p = doc.add_paragraph()
+        p.add_run(f"{key}: ").bold = True
+        p.add_run(str(value))
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"job_vacancy_{timestamp}.docx"
     doc.save(filename)
     return filename
 
-def send_email(filename, data, sender_email):
-    """Send an email with job vacancy details attached."""
-    receiver_email = "info@stirlingqr.com"
+def save_submission(data, filename):
+    """Save form data and Word document locally."""
+    submissions_folder = "submissions"
+    if not os.path.exists(submissions_folder):
+        os.makedirs(submissions_folder)
+
+    # Save Word document in the submissions folder
+    new_file_path = os.path.join(submissions_folder, filename)
+    os.rename(filename, new_file_path)
+
+    # Save form data to a CSV file for record-keeping
+    csv_file = os.path.join(submissions_folder, "submissions.csv")
+    df = pd.DataFrame([data])
     
-    # Create message
-    msg = MIMEMultipart()
-    msg['From'] = sender_email
-    msg['To'] = receiver_email
-    msg['Subject'] = f"New Job Vacancy: {data['Job Title']}"
-
-    # Email body
-    body = "A new job vacancy has been submitted with the following details:\n\n"
-    for key, value in data.items():
-        if key != "Sender Email":
-            body += f"{key}: {value}\n"
-    msg.attach(MIMEText(body, 'plain'))
-
-    # Attach Word document
-    with open(filename, 'rb') as f:
-        attachment = MIMEApplication(f.read(), _subtype='docx')
-        attachment.add_header('Content-Disposition', 'attachment', filename=filename)
-        msg.attach(attachment)
-
-    # Send email via SMTP
-    try:
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()
-        server.login(sender_email, st.session_state.email_password)
-        server.send_message(msg)
-        server.quit()
-        return True
-    except Exception as e:
-        st.error(f"Error sending email: {str(e)}")
-        return False
+    if os.path.exists(csv_file):
+        existing_df = pd.read_csv(csv_file)
+        updated_df = pd.concat([existing_df, df], ignore_index=True)
+        updated_df.to_csv(csv_file, index=False)
+    else:
+        df.to_csv(csv_file, index=False)
 
 # Form creation and submission handling
 with st.form("job_vacancy_form"):
     # Contact Information
     st.subheader("Contact Information")
-    sender_email = st.text_input("Your Email Address*")
+    name = st.text_input("Your Name*")  # Changed from "Email Address" to "Name"
 
     # Basic Job Information
     st.subheader("Basic Job Information")
@@ -118,10 +94,106 @@ with st.form("job_vacancy_form"):
     
     bonus_scheme = st.text_area("Bonus Structure Details (if applicable)")
 
-# Qualifications and Requirements Section (truncated for brevity)
+    # Qualifications and Requirements
+    st.subheader("Qualifications and Requirements")
+    
+    experience_years = st.slider("Years of Experience Required", 0, 20, 3)
+    
+    education_level = st.selectbox(
+        "Minimum Education Level",
+        ["None Required", "High School", "Bachelor's Degree", "Master's Degree", "PhD"]
+    )
+    
+    required_skills = st.text_area("Required Skills and Qualifications*")
+    
+    preferred_skills = st.text_area("Preferred Skills (Nice to Have)")
 
-# Key Success Factors Section (truncated for brevity)
+    # Interview Process
+    st.subheader("Interview Process")
+    
+    interview_stages = st.multiselect(
+        "Interview Stages*",
+        ["Phone Screening", "HR Interview", "Technical Interview",
+         "Task/Assignment", "Panel Interview", "Final Interview",
+         "Presentation", "Assessment Center"]
+    )
+    
+    interview_details = st.text_area("Additional Interview Process Details")
 
-# Additional Information Section (truncated for brevity)
+    # Key Success Factors
+    st.subheader("Top 3 Most Important Factors")
+    
+    success_factor_1 = st.text_input("1st Most Important Factor*")
+    
+    success_factor_2 = st.text_input("2nd Most Important Factor*")
+    
+    success_factor_3 = st.text_input("3rd Most Important Factor*")
 
-# Submit button handling logic (truncated for brevity)
+    # Additional Information
+    st.subheader("Additional Information")
+    
+    start_date = st.date_input("Expected Start Date")
+    
+    urgent = st.checkbox("This is an urgent requirement")
+    
+    additional_notes = st.text_area("Any Additional Information or Special Requirements")
+
+    # Submit button
+    submitted = st.form_submit_button("Submit Job Vacancy")
+
+# Handle form submission
+if submitted:
+    
+    required_fields = [
+        (name, "Name"),
+        (job_title, "Job Title"),
+        (location, "Location"),
+        (required_skills, "Required Skills"),
+        (success_factor_1, "1st Important Factor"),
+        (success_factor_2, "2nd Important Factor"),
+        (success_factor_3, "3rd Important Factor"),
+     ]
+    
+    missing_fields = [field[1] for field in required_fields if not field[0]]
+    
+    if missing_fields:
+        st.error(f"Please fill out the following required fields: {', '.join(missing_fields)}")
+        
+    else:
+        # Collect form data
+        form_data = {
+            "Submission Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "Name": name,
+            "Job Title": job_title,
+            "Department": department,
+            "Location": location,
+            "Working Model": work_model,
+            "Salary Range": f"£{salary_min:,} - £{salary_max:,}",
+            "Benefits": ", ".join(benefits),
+            "Bonus Structure": bonus_scheme,
+            "Required Experience": f"{experience_years} years",
+            "Education Level": education_level,
+            "Required Skills": required_skills,
+            "Preferred Skills": preferred_skills,
+            "Interview Stages": ", ".join(interview_stages),
+            "Interview Details": interview_details,
+            "Top Factor 1": success_factor_1,
+            "Top Factor 2": success_factor_2,
+            "Top Factor 3": success_factor_3,
+            "Start Date": start_date.strftime("%Y-%m-%d"),
+            "Urgent": urgent,
+            "Additional Notes": additional_notes,
+        }
+
+        # Create Word document and save submission locally
+        doc_filename = create_word_document(form_data)
+        save_submission(form_data, doc_filename)
+
+        # Success message and download button for client
+        with open(doc_filename, 'rb') as file:
+            btn = st.download_button(
+                label="Download Job Vacancy Details",
+                data=file,
+                file_name=doc_filename,
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
