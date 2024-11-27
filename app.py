@@ -65,8 +65,13 @@ def save_submission(data, filename):
 # Helper function: Send form data to Formspree
 def send_to_formspree(data):
     formspree_url = "https://formspree.io/f/xbljzalo"  # Replace with your Formspree URL
-    response = requests.post(formspree_url, json=data)
-    return response.status_code, response.text
+    headers = {"Accept": "application/json"}  # Required header for Formspree responses
+    try:
+        # Convert data dictionary to form-encoded format and send POST request
+        response = requests.post(formspree_url, data=data, headers=headers)
+        return response.status_code, response.text
+    except Exception as e:
+        return None, str(e)
 
 # Form creation and submission handling
 with st.form("job_vacancy_form"):
@@ -175,7 +180,6 @@ if submitted:
         
     else:
         form_data = {
-            "Submission Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "Company Name": company_name,
             "Job Title": job_title,
             "Department": department,
@@ -202,7 +206,7 @@ if submitted:
             doc_filename = create_word_document(form_data)
             save_submission(form_data, doc_filename)
 
-            # Send data to Formspree
+            # Send data to Formspree and handle response
             status_code, response_text = send_to_formspree(form_data)
 
             if status_code == 200:
@@ -215,7 +219,7 @@ if submitted:
                     )
                 st.success(f"Form submitted successfully! A copy has been emailed to you.")
             else:
-                st.error(f"Failed to send email. Error: {response_text}")
+                st.error(f"Failed to send email. Response: {response_text}")
         
         except Exception as e:
             st.error(f"An error occurred: {str(e)}")
