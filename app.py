@@ -102,9 +102,9 @@ with st.form("job_vacancy_form"):
     st.subheader("Compensation Package")
     col1, col2 = st.columns(2)
     with col1:
-        salary_min = st.number_input("Minimum Salary (£)*", min_value=0)
+        salary_min = st.number_input("Minimum Salary*", min_value=0)
     with col2:
-        salary_max = st.number_input("Maximum Salary (£)*", min_value=0)
+        salary_max = st.number_input("Maximum Salary", min_value=0)
     
     benefits = st.multiselect(
         "Benefits Package",
