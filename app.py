@@ -3,6 +3,8 @@ import pandas as pd
 from datetime import datetime
 import os
 from docx import Document
+from github import Github
+import base64
 
 # Page configuration
 st.set_page_config(page_title="Job Vacancy Requirements Form", layout="wide")
@@ -49,6 +51,49 @@ def save_submission(data, filename):
         updated_df.to_csv(csv_file, index=False)
     else:
         df.to_csv(csv_file, index=False)
+
+# Helper function: Upload file to GitHub
+def upload_to_github(file_path, repo_name, branch_name, github_token):
+    """
+    Uploads a file to a GitHub repository.
+
+    Args:
+        file_path (str): The local path of the file to upload.
+        repo_name (str): The name of the repository (e.g., "username/repo").
+        branch_name (str): The branch where the file will be uploaded.
+        github_token (str): Your GitHub personal access token.
+
+    Returns:
+        str: URL of the uploaded file on GitHub.
+    """
+    g = Github(github_token)
+    repo = g.get_repo(repo_name)
+
+    # Read the file content
+    with open(file_path, "rb") as file:
+        content = file.read()
+    
+    content_base64 = base64.b64encode(content).decode("utf-8")
+    github_file_path = f"submissions/{file_path.split('/')[-1]}"
+
+    try:
+        existing_file = repo.get_contents(github_file_path, ref=branch_name)
+        repo.update_file(
+            path=github_file_path,
+            message=f"Update {file_path.split('/')[-1]}",
+            content=content_base64,
+            sha=existing_file.sha,
+            branch=branch_name,
+        )
+    except:
+        repo.create_file(
+            path=github_file_path,
+            message=f"Add {file_path.split('/')[-1]}",
+            content=content_base64,
+            branch=branch_name,
+        )
+    
+    return f"https://github.com/{repo_name}/blob/{branch_name}/{github_file_path}"
 
 # Initialize session state for form submission tracking
 if 'form_submitted' not in st.session_state:
@@ -139,80 +184,5 @@ with st.form("job_vacancy_form"):
     
     additional_notes = st.text_area("Any Additional Information or Special Requirements")
 
-    # Submit button
-    submitted = st.form_submit_button("Submit Job Vacancy")
-
-# Handle form submission outside the form block
-if submitted:
-    
-    required_fields = [
-        (company_name, "Company Name"),
-        (job_title, "Job Title"),
-        (location, "Location"),
-        (required_skills, "Required Skills"),
-        (success_factor_1, "1st Important Factor"),
-        (success_factor_2, "2nd Important Factor"),
-        (success_factor_3, "3rd Important Factor"),
-     ]
-    
-    missing_fields = [field[1] for field in required_fields if not field[0]]
-    
-    if missing_fields:
-        st.error(f"Please fill out the following required fields: {', '.join(missing_fields)}")
-        
-    else:
-        # Collect form data
-        form_data = {
-            "Submission Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "Company Name": company_name,
-            "Job Title": job_title,
-            "Department": department,
-            "Location": location,
-            "Working Model": work_model,
-            "Salary Range": f"£{salary_min:,} - £{salary_max:,}",
-            "Benefits": ", ".join(benefits),
-            "Bonus Structure": bonus_scheme,
-            "Required Experience": f"{experience_years} years",
-            "Education Level": education_level,
-            "Required Skills": required_skills,
-            "Preferred Skills": preferred_skills,
-            "Interview Stages": ", ".join(interview_stages),
-            "Interview Details": interview_details,
-            "Top Factor 1": success_factor_1,
-            "Top Factor 2": success_factor_2,
-            "Top Factor 3": success_factor_3,
-            "Start Date": start_date.strftime("%Y-%m-%d"),
-            "Urgent": urgent,
-            "Additional Notes": additional_notes,
-        }
-
-        # Create Word document locally
-        doc_filename = create_word_document(form_data)
-
-        try:
-            # Save submission locally
-            save_submission(form_data, doc_filename)
-
-            # Update session state to indicate a successful submission
-            st.session_state['form_submitted'] = True
-
-            # Success message and download button for client
-            with open(doc_filename, 'rb') as file:
-                btn = st.download_button(
-                    label="Download Job Vacancy Details",
-                    data=file,
-                    file_name=doc_filename,
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                )
-
-                if btn:
-                    os.remove(doc_filename)  # Clean up local file after download
-
-            st.success(f"Form submitted successfully! Your document has been saved.")
-
-        except Exception as e:
-            st.error(f"An error occurred: {str(e)}")
-
-# Sidebar notification for new submissions (optional)
-if 'form_submitted' in st.session_state and st.session_state['form_submitted']:
-   with open('submissions.csv')
+     # Submit button 
+submitted!
