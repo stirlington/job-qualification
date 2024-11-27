@@ -29,10 +29,9 @@ def create_word_document(data):
     doc = Document()
     doc.add_heading('Job Vacancy Details', level=0)
     for key, value in data.items():
-        if key not in ["Submission Date", "Sender Email"]:
-            p = doc.add_paragraph()
-            p.add_run(f"{key}: ").bold = True
-            p.add_run(str(value))
+        p = doc.add_paragraph()
+        p.add_run(f"{key}: ").bold = True
+        p.add_run(str(value))
     filename = f"job_vacancy_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
     doc.save(filename)
     return filename
