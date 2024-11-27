@@ -89,14 +89,71 @@ with st.form("job_vacancy_form"):
     st.subheader("Contact Information")
     sender_email = st.text_input("Your Email Address*")
     
-    # [Rest of the form fields remain the same]
     # Basic Job Information
     st.subheader("Basic Job Information")
     job_title = st.text_input("Job Title*")
     department = st.text_input("Department")
     location = st.text_input("Location*")
     
-    # [... rest of your existing form fields ...]
+    # Working Arrangements
+    st.subheader("Working Arrangements")
+    work_model = st.selectbox(
+        "Working Model*",
+        ["Office-based", "Hybrid", "Remote", "Flexible"]
+    )
+    if work_model == "Hybrid":
+        office_days = st.number_input("Required Office Days per Week", min_value=1, max_value=5)
+    
+    # Compensation
+    st.subheader("Compensation Package")
+    col1, col2 = st.columns(2)
+    with col1:
+        salary_min = st.number_input("Minimum Salary (£)*", min_value=0)
+    with col2:
+        salary_max = st.number_input("Maximum Salary (£)*", min_value=0)
+    
+    benefits = st.multiselect(
+        "Benefits Package",
+        ["Health Insurance", "Dental Insurance", "Life Insurance", "Pension", 
+         "Annual Bonus", "Share Options", "Professional Development Budget",
+         "Gym Membership", "Private Healthcare", "Mental Health Support"]
+    )
+    
+    bonus_scheme = st.text_area("Bonus Structure Details (if applicable)")
+    
+    # Qualifications and Requirements
+    st.subheader("Qualifications and Requirements")
+    experience_years = st.slider("Years of Experience Required", 0, 20, 3)
+    education_level = st.selectbox(
+        "Minimum Education Level",
+        ["None Required", "High School", "Bachelor's Degree", "Master's Degree", "PhD"]
+    )
+    
+    required_skills = st.text_area("Required Skills and Qualifications*")
+    preferred_skills = st.text_area("Preferred Skills (Nice to Have)")
+    
+    # Interview Process
+    st.subheader("Interview Process")
+    interview_stages = st.multiselect(
+        "Interview Stages*",
+        ["Phone Screening", "HR Interview", "Technical Interview", 
+         "Task/Assignment", "Panel Interview", "Final Interview",
+         "Presentation", "Assessment Center"]
+    )
+    
+    interview_details = st.text_area("Additional Interview Process Details")
+    
+    # Key Success Factors
+    st.subheader("Top 3 Most Important Factors")
+    success_factor_1 = st.text_input("1st Most Important Factor*")
+    success_factor_2 = st.text_input("2nd Most Important Factor*")
+    success_factor_3 = st.text_input("3rd Most Important Factor*")
+    
+    # Additional Information
+    st.subheader("Additional Information")
+    start_date = st.date_input("Expected Start Date")
+    urgent = st.checkbox("This is an urgent requirement")
+    additional_notes = st.text_area("Any Additional Information or Special Requirements")
     
     # Submit button
     submitted = st.form_submit_button("Submit Job Vacancy")
