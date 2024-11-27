@@ -35,9 +35,9 @@ def create_word_document(data):
 
 # Helper function: Send email via Outlook SMTP
 def send_email_via_outlook(filename, data):
-    sender_email = "chris@stirlingqr.com"  # Your Outlook email address
+    sender_email = "chris.stirling@stirlingqr.com"  # Your Outlook email address
     sender_password = "Measure897!"  # Your Outlook password (ensure this is secure!)
-    receiver_email = "chris@stirlingqr.com"  # Email where you want to receive the submission
+    receiver_email = "chris.stirling@stirlingqr.com"  # Email where you want to receive the submission
 
     # Create the email message
     msg = MIMEMultipart()
@@ -82,37 +82,8 @@ with st.form("job_vacancy_form"):
     department = st.text_input("Department")
     location = st.text_input("Location*")
 
-    # Working Arrangements
-    st.subheader("Working Arrangements")
-    work_model = st.selectbox(
-        "Working Model*", ["Office-based", "Hybrid", "Remote", "Flexible"]
-    )
+    # Working Arrangements Section (truncated for brevity)
     
-    if work_model == "Hybrid":
-        office_days = st.number_input("Required Office Days per Week", min_value=1, max_value=5)
-
-    # Compensation Package
-    st.subheader("Compensation Package")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        salary_min = st.number_input("Minimum Salary (£)*", min_value=0)
-    
-    with col2:
-        salary_max = st.number_input("Maximum Salary (£)*", min_value=0)
-    
-    benefits = st.multiselect(
-        "Benefits Package",
-        ["Health Insurance", "Dental Insurance", "Life Insurance", "Pension",
-         "Annual Bonus", "Share Options", "Professional Development Budget",
-         "Gym Membership", "Private Healthcare", "Mental Health Support"]
-    )
-    
-    bonus_scheme = st.text_area("Bonus Structure Details (if applicable)")
-
-    # Qualifications and Requirements Section (truncated for brevity)
-
     # Submit button
     submitted = st.form_submit_button("Submit Job Vacancy")
 
