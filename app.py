@@ -2,16 +2,87 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import os
+from docx import Document
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.application import MIMEApplication
+import base64
 
 # Page configuration
 st.set_page_config(page_title="Recruitment Form", layout="wide")
+
+# Display logo
+try:
+    logo_path = "logo.png"
+    st.image(logo_path, width=200)
+except Exception as e:
+    st.error("Logo not found. Please ensure 'logo.png' is in the same directory as the script.")
 
 # Title
 st.title("Job Vacancy Requirements Form")
 st.markdown("Please fill out the details for your job vacancy below.")
 
+def create_word_document(data):
+    doc = Document()
+    
+    # Add heading
+    doc.add_heading('Job Vacancy Details', 0)
+    
+    # Add information
+    for key, value in data.items():
+        # Skip the submission date as it's already in the filename
+        if key != "Submission Date":
+            p = doc.add_paragraph()
+            p.add_run(f"{key}: ").bold = True
+            p.add_run(str(value))
+    
+    # Save the document
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"job_vacancy_{timestamp}.docx"
+    doc.save(filename)
+    return filename
+
+def send_email(filename, data):
+    # Email settings
+    sender_email = "your-email@gmail.com"  # Replace with your email
+    sender_password = "your-app-password"   # Replace with your app password
+    receiver_email = "info@stirlingqr.com"
+    
+    # Create message
+    msg = MIMEMultipart()
+    msg['From'] = sender_email
+    msg['To'] = receiver_email
+    msg['Subject'] = f"New Job Vacancy: {data['Job Title']}"
+    
+    # Email body
+    body = "A new job vacancy has been submitted with the following details:\n\n"
+    for key, value in data.items():
+        body += f"{key}: {value}\n"
+    
+    msg.attach(MIMEText(body, 'plain'))
+    
+    # Attach Word document
+    with open(filename, 'rb') as f:
+        attachment = MIMEApplication(f.read(), _subtype='docx')
+        attachment.add_header('Content-Disposition', 'attachment', filename=filename)
+        msg.attach(attachment)
+    
+    # Send email
+    try:
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(sender_email, sender_password)
+        server.send_message(msg)
+        server.quit()
+        return True
+    except Exception as e:
+        st.error(f"Error sending email: {str(e)}")
+        return False
+
 # Form
 with st.form("job_vacancy_form"):
+    # [Previous form fields remain the same]
     # Basic Job Information
     st.subheader("Basic Job Information")
     job_title = st.text_input("Job Title*")
@@ -122,10 +193,26 @@ if submitted:
             "Additional Notes": additional_notes
         }
         
-        # Convert to DataFrame
-        df = pd.DataFrame([form_data])
+        # Create Word document
+        doc_filename = create_word_document(form_data)
         
-        # Save to Excel
+        # Create download button for Word document
+        with open(doc_filename, "rb") as file:
+            btn = st.download_button(
+                label="Download Job Vacancy Details",
+                data=file,
+                file_name=doc_filename,
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
+        
+        # Send email
+        if send_email(doc_filename, form_data):
+            st.success("Form submitted successfully! Email sent to info@stirlingqr.com")
+        else:
+            st.warning("Form submitted but there was an issue sending the email. Please download and forward the document manually.")
+        
+        # Save to Excel (optional)
+        df = pd.DataFrame([form_data])
         file_path = "job_vacancies.xlsx"
         if os.path.exists(file_path):
             existing_df = pd.read_excel(file_path)
@@ -133,8 +220,6 @@ if submitted:
             updated_df.to_excel(file_path, index=False)
         else:
             df.to_excel(file_path, index=False)
-        
-        st.success("Form submitted successfully! The data has been saved.")
 
 # Add some CSS styling
 st.markdown("""
@@ -146,6 +231,11 @@ st.markdown("""
         }
         .stButton>button:hover {
             background-color: #0052a3;
+        }
+        img {
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
         }
     </style>
     """, unsafe_allow_html=True)
