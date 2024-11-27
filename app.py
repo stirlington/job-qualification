@@ -23,16 +23,13 @@ def create_word_document(data):
 
 def save_submission(data, filename):
     """Save form data and Word document locally."""
-    # Create a submissions folder if it doesn't exist
     submissions_folder = "submissions"
     if not os.path.exists(submissions_folder):
         os.makedirs(submissions_folder)
 
-    # Save Word document in the submissions folder
     new_file_path = os.path.join(submissions_folder, filename)
     os.rename(filename, new_file_path)
 
-    # Save form data to a CSV file for record-keeping
     csv_file = os.path.join(submissions_folder, "submissions.csv")
     df = pd.DataFrame([data])
     
@@ -47,11 +44,12 @@ def validate_login(email, password):
     """Validate admin login credentials."""
     return email == "info@stirlingqr.com" and password == "JobQualifications"
 
-# Navigation between pages
-page = st.sidebar.selectbox("Select Page", ["Client Page", "Admin Page"])
+# Get query parameters to determine which page to display
+query_params = st.experimental_get_query_params()
+page = query_params.get("page", ["client"])[0]  # Default to "client" page
 
 # ------------------- Client Page -------------------
-if page == "Client Page":
+if page == "client":
     st.title("Job Vacancy Requirements Form")
     st.markdown("Please fill out this form with job vacancy details.")
 
@@ -70,7 +68,6 @@ if page == "Client Page":
         if not all([sender_email, job_title, location, required_skills, success_factor_1, success_factor_2, success_factor_3]):
             st.error("All required fields must be filled.")
         else:
-            # Collect form data
             form_data = {
                 "Submission Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "Sender Email": sender_email,
@@ -82,14 +79,11 @@ if page == "Client Page":
                 "Top Factor 3": success_factor_3,
             }
 
-            # Create Word document and save submission locally
             doc_filename = create_word_document(form_data)
             save_submission(form_data, doc_filename)
 
-            # Notify client of successful submission
             st.success("Form submitted successfully! A new job vacancy has been recorded.")
 
-            # Provide download button for Word document to the client
             with open(f"submissions/{doc_filename}", 'rb') as file:
                 st.download_button(
                     label="Download Job Vacancy Details",
@@ -99,15 +93,13 @@ if page == "Client Page":
                 )
 
 # ------------------- Admin Page -------------------
-elif page == "Admin Page":
+elif page == "admin":
     st.title("Admin Dashboard")
 
-    # Login system for admin page
     if "logged_in" not in st.session_state:
         st.session_state.logged_in = False
 
     if not st.session_state.logged_in:
-        # Show login form
         with st.form("login_form"):
             admin_email = st.text_input("Admin Email")
             admin_password = st.text_input("Password", type="password")
@@ -117,11 +109,11 @@ elif page == "Admin Page":
             if validate_login(admin_email, admin_password):
                 st.session_state.logged_in = True
                 st.success("Login successful!")
+                st.experimental_set_query_params(page="admin")  # Reload as admin page
                 st.experimental_rerun()
             else:
                 st.error("Invalid email or password.")
     else:
-        # Admin dashboard content
         submissions_folder = "submissions"
         
         if not os.path.exists(submissions_folder):
@@ -134,7 +126,6 @@ elif page == "Admin Page":
                 st.write("### Submitted Forms:")
                 st.dataframe(df)
 
-                # Provide links to download individual Word documents
                 for _, row in df.iterrows():
                     word_doc_name = f"job_vacancy_{row['Submission Date'].replace(':', '').replace('-', '').replace(' ', '_')}.docx"
                     word_doc_path = os.path.join(submissions_folder, word_doc_name)
@@ -150,7 +141,7 @@ elif page == "Admin Page":
             else:
                 st.error("No CSV records found.")
 
-        # Logout button
         if st.button("Logout"):
-            st.session_state.logged_in = False
+            del st.session_state.logged_in
+            st.experimental_set_query_params(page="client")  # Redirect to client page
             st.experimental_rerun()
